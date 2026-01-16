@@ -1,0 +1,64 @@
+<!-- Plugin Configuration File: https://plugins.jetbrains.com/docs/intellij/plugin-configuration-file.html -->
+<idea-plugin>
+    <!-- Unique identifier of the plugin. It should be FQN, cannot be changed between the plugin versions. -->
+    <id>com.ninja.json-to-objects</id>
+
+    <!-- Public plugin name should be written in Title Case.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-name -->
+    <name>JSON to Java/Kotlin Object</name>
+
+    <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
+    <vendor>HyunsooJo</vendor>
+
+    <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
+         Guidelines: https://plugins.jetbrains.com/docs/marketplace/best-practices-for-listing.html#plugin-description -->
+    <description><![CDATA[
+        <p>Convert JSON to Java/Kotlin classes with ease.</p>
+
+        <h3>Features</h3>
+        <ul>
+            <li>Generate Java classes or Kotlin data classes from JSON</li>
+            <li>Lombok support: @Data, @Getter, @Setter, @NoArgsConstructor, @AllArgsConstructor</li>
+            <li>Java Record support (Java 14+)</li>
+            <li>@JsonProperty annotation support</li>
+            <li>Multiple structure options: Inner class, Separate classes, Multiple files</li>
+            <li>JSON validation with helpful error messages</li>
+        </ul>
+
+        <h3>Usage</h3>
+        <ul>
+            <li><b>Right-click on JSON file</b> → JSON to Java/Kotlin Object</li>
+            <li><b>Select text in editor</b> → Right-click → JSON to Java/Kotlin Object</li>
+            <li><b>Tools menu</b> → JSON to Java/Kotlin Object</li>
+            <li><b>Shortcut</b>: Ctrl+Alt+Shift+K</li>
+        </ul>
+    ]]></description>
+
+    <!-- Product and plugin compatibility requirements.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
+
+    <depends>com.intellij.java</depends>
+    <!-- Extensions defined by the plugin.
+         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
+    <extensions defaultExtensionNs="com.intellij">
+    </extensions>
+
+    <actions>
+        <action id="JsonToClass.Convert"
+                class="com.ninja.jsontoobjects.action.ConvertJsonAction"
+                text="JSON to Java/Kotlin Object"
+                description="Convert JSON to Java/Kotlin Object">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="after" relative-to-action="CutCopyPasteGroup"/>
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+        </action>
+
+        <action id="JsonToClass.Open"
+                class="com.ninja.jsontoobjects.action.OpenJsonConverterAction"
+                text="JSON to Java/Kotlin Object"
+                description="Convert JSON to Java/Kotlin Object">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <add-to-group group-id="GenerateGroup" anchor="last"/>
+            <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift K"/>
+        </action>
+    </actions>
+</idea-plugin>
