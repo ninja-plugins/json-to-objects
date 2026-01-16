@@ -2,6 +2,16 @@
 
 IntelliJ IDEA plugin that converts JSON to Java/Kotlin classes.
 
+## Demo
+
+### Java
+![Java Demo](docs/plug-in-demo-java.gif)
+
+![Java Demo 2](docs/plug-in-demo-java-2.gif)
+
+### Kotlin
+![Kotlin Demo](docs/plug-in-demo-kotlin.gif)
+
 ## Features
 
 - Generate **Java classes** or **Kotlin data classes** from JSON
