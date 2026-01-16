@@ -44,3 +44,6 @@ bin/
 
 ### IntelliJ Platform ###
 .intellijPlatform/
+
+### Credentials ###
+gradle.properties

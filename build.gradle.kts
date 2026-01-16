@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.ninja"
-version = "1.0-SNAPSHOT"
+version = "1.0.0"
 
 repositories {
     mavenCentral()
@@ -36,7 +36,14 @@ intellijPlatform {
         }
 
         changeNotes = """
-            Initial version
+            <h3>1.0.0</h3>
+            <ul>
+                <li>Initial release</li>
+                <li>Support Java classes and Kotlin data classes generation</li>
+                <li>Lombok annotations support (@Data, @Getter, @Setter, @NoArgsConstructor, @AllArgsConstructor)</li>
+                <li>Java Record support</li>
+                <li>@JsonProperty annotation support</li>
+            </ul>
         """.trimIndent()
     }
 }
