@@ -46,6 +46,10 @@ intellijPlatform {
             </ul>
         """.trimIndent()
     }
+
+    publishing {
+        token = providers.gradleProperty("intellijPublishToken")
+    }
 }
 
 tasks {
