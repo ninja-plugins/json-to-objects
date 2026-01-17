@@ -20,6 +20,7 @@ IntelliJ IDEA plugin that converts JSON to Java/Kotlin classes.
 - **@JsonProperty** annotation support
 - Multiple structure options: Inner class, Separate classes, Multiple files
 - JSON validation with helpful error messages
+- **Auto package detection**: Automatically detects package from open Kotlin/Java files
 
 ## Usage
 
@@ -33,7 +34,7 @@ Select JSON text in any file → Right-click → **JSON to Java/Kotlin Object**
 **Tools** → **JSON to Java/Kotlin Object**
 
 ### 4. Shortcut
-`Ctrl+Alt+Shift+K`
+`Ctrl+Alt+Shift+J`
 
 ## Installation
 
