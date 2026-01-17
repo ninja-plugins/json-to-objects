@@ -53,6 +53,7 @@ data class KotlinOptions(
 
 data class GeneratorOptions(
     val className: String,
+    val packageName: String? = null,
     val targetLanguage: TargetLanguage = TargetLanguage.JAVA,
     val javaOptions: JavaOptions = JavaOptions(),
     val kotlinOptions: KotlinOptions = KotlinOptions()

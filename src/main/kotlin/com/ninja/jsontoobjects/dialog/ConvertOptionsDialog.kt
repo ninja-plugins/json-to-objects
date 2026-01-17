@@ -16,10 +16,12 @@ import javax.swing.*
 class ConvertOptionsDialog(
     project: Project?,
     private val suggestedClassName: String,
-    private val initialJson: String = ""
+    private val initialJson: String = "",
+    private val suggestedPackage: String? = null
 ) : DialogWrapper(project) {
 
     private val classNameField = JBTextField(suggestedClassName)
+    private val packageNameField = JBTextField(suggestedPackage ?: "")
     private val jsonInputArea = JTextArea(initialJson, 8, 40).apply {
         lineWrap = true
         wrapStyleWord = true
@@ -208,8 +210,9 @@ class ConvertOptionsDialog(
         val topPanel = JPanel()
         topPanel.layout = BoxLayout(topPanel, BoxLayout.Y_AXIS)
 
-        // Class name
+        // Class name & Package name
         val classNamePanel = FormBuilder.createFormBuilder()
+            .addLabeledComponent(JBLabel("Package:"), packageNameField)
             .addLabeledComponent(JBLabel("Class Name:"), classNameField)
             .panel
         topPanel.add(classNamePanel)
@@ -294,8 +297,11 @@ class ConvertOptionsDialog(
         val kotlinStructureMode = if (kotlinMultipleFilesCheckbox.isSelected)
             StructureMode.MULTIPLE_FILES else StructureMode.SEPARATE_CLASSES
 
+        val packageName = packageNameField.text.trim().takeIf { it.isNotEmpty() }
+
         return GeneratorOptions(
             className = classNameField.text.trim(),
+            packageName = packageName,
             targetLanguage = targetLanguage,
             javaOptions = JavaOptions(
                 useJsonProperty = useJsonPropertyCheckbox.isSelected,

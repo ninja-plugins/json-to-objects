@@ -6,7 +6,10 @@ import com.ninja.jsontoobjects.util.StringUtils
 
 class JavaGenerator(private val options: JavaOptions) {
 
-    fun generate(parseResult: ParseResult, rootClassName: String): Map<String, String> {
+    private var packageName: String? = null
+
+    fun generate(parseResult: ParseResult, rootClassName: String, packageName: String? = null): Map<String, String> {
+        this.packageName = packageName
         val results = mutableMapOf<String, String>()
 
         when (options.structureMode) {
@@ -66,6 +69,11 @@ class JavaGenerator(private val options: JavaOptions) {
     }
 
     private fun addImports(sb: StringBuilder) {
+        packageName?.let {
+            sb.appendLine("package $it;")
+            sb.appendLine()
+        }
+
         val imports = mutableListOf<String>()
 
         if (options.useJsonProperty) {

@@ -6,7 +6,10 @@ import com.ninja.jsontoobjects.util.StringUtils
 
 class KotlinGenerator(private val options: KotlinOptions) {
 
-    fun generate(parseResult: ParseResult, rootClassName: String): Map<String, String> {
+    private var packageName: String? = null
+
+    fun generate(parseResult: ParseResult, rootClassName: String, packageName: String? = null): Map<String, String> {
+        this.packageName = packageName
         val results = mutableMapOf<String, String>()
 
         when (options.structureMode) {
@@ -47,6 +50,10 @@ class KotlinGenerator(private val options: KotlinOptions) {
     }
 
     private fun addImports(sb: StringBuilder) {
+        packageName?.let {
+            sb.appendLine("package $it")
+            sb.appendLine()
+        }
         if (options.useJsonProperty) {
             sb.appendLine("import com.fasterxml.jackson.annotation.JsonProperty")
         }
