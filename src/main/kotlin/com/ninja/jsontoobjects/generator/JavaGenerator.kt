@@ -101,7 +101,7 @@ class JavaGenerator(private val options: JavaOptions) {
         includeInnerClasses: Boolean
     ) {
         if (options.useRecord) {
-            generateRecord(sb, className, objectType, indent)
+            generateRecord(sb, className, objectType, allClasses, indent, includeInnerClasses)
             return
         }
 
@@ -188,7 +188,14 @@ class JavaGenerator(private val options: JavaOptions) {
         sb.appendLine("$indent}")
     }
 
-    private fun generateRecord(sb: StringBuilder, className: String, objectType: ParsedType.ObjectType, indent: String) {
+    private fun generateRecord(
+        sb: StringBuilder,
+        className: String,
+        objectType: ParsedType.ObjectType,
+        allClasses: Map<String, ParsedType.ObjectType>,
+        indent: String,
+        includeInnerClasses: Boolean
+    ) {
         val params = objectType.fields.map { (fieldName, fieldType) ->
             val javaType = toJavaType(fieldType)
             val camelName = StringUtils.toCamelCase(fieldName)
@@ -200,9 +207,42 @@ class JavaGenerator(private val options: JavaOptions) {
             }
         }.joinToString(",\n$indent    ")
 
+        // Inner classes가 있으면 record body 안에 넣어야 함
+        val nestedTypes = if (includeInnerClasses) {
+            val directNestedTypes = objectType.fields.values
+                .filterIsInstance<ParsedType.ObjectType>()
+                .map { it.typeName }
+                .toSet()
+
+            val arrayNestedTypes = objectType.fields.values
+                .filterIsInstance<ParsedType.ArrayType>()
+                .mapNotNull { (it.elementType as? ParsedType.ObjectType)?.typeName }
+                .toSet()
+
+            (directNestedTypes + arrayNestedTypes).filter { it != className }
+        } else {
+            emptyList()
+        }
+
         sb.appendLine("${indent}public record $className(")
         sb.appendLine("$indent    $params")
-        sb.appendLine("$indent) {}")
+
+        if (nestedTypes.isEmpty()) {
+            sb.appendLine("$indent) {}")
+        } else {
+            sb.appendLine("$indent) {")
+            val innerIndent = "$indent    "
+
+            for (nestedTypeName in nestedTypes) {
+                val nestedType = allClasses[nestedTypeName]
+                if (nestedType != null) {
+                    sb.appendLine()
+                    generateRecord(sb, nestedTypeName, nestedType, allClasses, innerIndent, includeInnerClasses = true)
+                }
+            }
+
+            sb.appendLine("$indent}")
+        }
     }
 
     private fun generateAllArgsConstructor(sb: StringBuilder, className: String, objectType: ParsedType.ObjectType, indent: String) {

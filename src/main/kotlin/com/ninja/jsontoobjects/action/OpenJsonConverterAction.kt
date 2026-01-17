@@ -4,6 +4,7 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
+import com.intellij.openapi.project.guessProjectDir
 
 class OpenJsonConverterAction : AnAction() {
 
@@ -27,7 +28,7 @@ class OpenJsonConverterAction : AnAction() {
             project = project,
             initialJson = selectedText,
             suggestedClassName = "Generated",
-            targetDir = file?.parent ?: project.baseDir
+            targetDir = file?.parent ?: project.guessProjectDir()
         )
     }
 }

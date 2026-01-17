@@ -7,6 +7,7 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.VirtualFile
 import com.ninja.jsontoobjects.dialog.ConvertOptionsDialog
@@ -108,7 +109,7 @@ class ConvertJsonAction : AnAction() {
             }
 
             // 타겟 디렉토리가 없으면 프로젝트 루트 사용
-            val outputDir = targetDir ?: project.baseDir
+            val outputDir = targetDir ?: project.guessProjectDir()
             if (outputDir == null) {
                 // 파일 저장 없이 클립보드에 복사
                 val content = generatedFiles.values.joinToString("\n\n")
