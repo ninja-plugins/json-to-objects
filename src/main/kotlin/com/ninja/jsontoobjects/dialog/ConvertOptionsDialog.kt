@@ -1,5 +1,6 @@
 package com.ninja.jsontoobjects.dialog
 
+import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
 import com.google.gson.JsonSyntaxException
 import com.intellij.openapi.module.Module
@@ -12,6 +13,7 @@ import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.FormBuilder
 import com.ninja.jsontoobjects.model.*
 import com.ninja.jsontoobjects.util.JavaVersionUtil
+import com.ninja.jsontoobjects.util.JsonInputCleaner
 import com.ninja.jsontoobjects.util.KotlinSupportUtil
 import com.ninja.jsontoobjects.util.LombokUtil
 import java.awt.BorderLayout
@@ -28,10 +30,11 @@ class ConvertOptionsDialog(
 
     private val classNameField = JBTextField(suggestedClassName)
     private val packageNameField = JBTextField(suggestedPackage ?: "")
-    private val jsonInputArea = JTextArea(initialJson, 8, 40).apply {
+    private val jsonInputArea = JTextArea(prettyFormat(initialJson), 8, 40).apply {
         lineWrap = true
         wrapStyleWord = true
     }
+    private val formatButton = JButton("Format")
 
     // Language selection
     private val javaRadio = JRadioButton("Java", true)
@@ -211,6 +214,14 @@ class ConvertOptionsDialog(
         useSetterCheckbox.addActionListener { updateManualOptionsEnabled() }
         useNoArgsConstructorCheckbox.addActionListener { updateManualOptionsEnabled() }
         useAllArgsConstructorCheckbox.addActionListener { updateManualOptionsEnabled() }
+
+        // Format 버튼
+        formatButton.addActionListener { formatJsonInput() }
+    }
+
+    private fun formatJsonInput() {
+        val formatted = prettyFormat(jsonInputArea.text)
+        jsonInputArea.text = formatted
     }
 
     private fun updateOptionsVisibility() {
@@ -280,7 +291,13 @@ class ConvertOptionsDialog(
         val jsonPanel = JPanel(BorderLayout())
         jsonPanel.border = BorderFactory.createTitledBorder("JSON Input")
         jsonPanel.add(JScrollPane(jsonInputArea), BorderLayout.CENTER)
-        jsonPanel.preferredSize = Dimension(400, 150)
+
+        // Format 버튼 (오른쪽 하단)
+        val buttonPanel = JPanel(java.awt.FlowLayout(java.awt.FlowLayout.RIGHT))
+        buttonPanel.add(formatButton)
+        jsonPanel.add(buttonPanel, BorderLayout.SOUTH)
+
+        jsonPanel.preferredSize = Dimension(400, 180)
         topPanel.add(jsonPanel)
 
         // Language selection
@@ -308,7 +325,7 @@ class ConvertOptionsDialog(
         return mainPanel
     }
 
-    fun getJsonInput(): String = jsonInputArea.text.trim()
+    fun getJsonInput(): String = JsonInputCleaner.clean(jsonInputArea.text)
 
     override fun doValidate(): ValidationInfo? {
         val className = classNameField.text.trim()
@@ -319,7 +336,7 @@ class ConvertOptionsDialog(
             return ValidationInfo("Invalid class name", classNameField)
         }
 
-        val json = jsonInputArea.text.trim()
+        val json = JsonInputCleaner.clean(jsonInputArea.text)
         if (json.isBlank()) {
             return ValidationInfo("JSON input is required", jsonInputArea)
         }
@@ -381,5 +398,20 @@ class ConvertOptionsDialog(
                 structureMode = kotlinStructureMode
             )
         )
+    }
+
+    companion object {
+        private val gson = GsonBuilder().setPrettyPrinting().create()
+
+        fun prettyFormat(input: String): String {
+            if (input.isBlank()) return input
+            return try {
+                val cleaned = JsonInputCleaner.clean(input)
+                val jsonElement = JsonParser.parseString(cleaned)
+                gson.toJson(jsonElement)
+            } catch (e: Exception) {
+                input // 파싱 실패시 원본 반환
+            }
+        }
     }
 }
