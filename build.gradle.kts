@@ -29,6 +29,7 @@ dependencies {
 
 
         bundledPlugin("com.intellij.java")
+        bundledPlugin("org.jetbrains.kotlin")
     }
 }
 
@@ -52,6 +53,12 @@ intellijPlatform {
 
     publishing {
         token = providers.gradleProperty("intellijPublishToken")
+    }
+
+    pluginVerification {
+        ides {
+            recommended()
+        }
     }
 }
 

@@ -2,19 +2,25 @@ package com.ninja.jsontoobjects.dialog
 
 import com.google.gson.JsonParser
 import com.google.gson.JsonSyntaxException
+import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.roots.LanguageLevelProjectExtension
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.ValidationInfo
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.FormBuilder
 import com.ninja.jsontoobjects.model.*
+import com.ninja.jsontoobjects.util.JavaVersionUtil
+import com.ninja.jsontoobjects.util.KotlinSupportUtil
+import com.ninja.jsontoobjects.util.LombokUtil
 import java.awt.BorderLayout
 import java.awt.Dimension
 import javax.swing.*
 
 class ConvertOptionsDialog(
-    project: Project?,
+    private val project: Project?,
+    private val module: Module?,
     private val suggestedClassName: String,
     private val initialJson: String = "",
     private val suggestedPackage: String? = null
@@ -74,8 +80,61 @@ class ConvertOptionsDialog(
         javaOptionsPanel = createJavaOptionsPanel()
         kotlinOptionsPanel = createKotlinOptionsPanel()
         setupListeners()
+        updateRecordAvailability()
+        updateKotlinAvailability()
+        updateLombokAvailability()
         updateAllOptionsState()
         init()
+    }
+
+    private fun updateRecordAvailability() {
+        val languageLevel = project?.let {
+            LanguageLevelProjectExtension.getInstance(it)?.languageLevel
+        }
+
+        val supportsRecord = JavaVersionUtil.supportsRecord(languageLevel)
+
+        useRecordCheckbox.isEnabled = supportsRecord
+        if (!supportsRecord) {
+            useRecordCheckbox.isSelected = false
+            val currentLevel = languageLevel?.presentableText ?: "Unknown"
+            useRecordCheckbox.toolTipText = "Record requires Java 14+. Current project level: $currentLevel"
+        }
+    }
+
+    private fun updateKotlinAvailability() {
+        val isKotlinConfigured = KotlinSupportUtil.isKotlinConfigured(module)
+
+        kotlinRadio.isEnabled = isKotlinConfigured
+        if (!isKotlinConfigured) {
+            kotlinRadio.toolTipText = "Kotlin is not configured for this module"
+            // Java가 선택되어 있는지 확인하고, 아니면 Java로 전환
+            if (kotlinRadio.isSelected) {
+                javaRadio.isSelected = true
+                updateOptionsVisibility()
+            }
+        }
+    }
+
+    private fun updateLombokAvailability() {
+        val isLombokAvailable = LombokUtil.isLombokAvailable(project)
+
+        val lombokCheckboxes = listOf(
+            useDataCheckbox,
+            useGetterCheckbox,
+            useSetterCheckbox,
+            useNoArgsConstructorCheckbox,
+            useAllArgsConstructorCheckbox
+        )
+
+        if (!isLombokAvailable) {
+            val tooltipMessage = "Lombok is not available in this project"
+            lombokCheckboxes.forEach { checkbox ->
+                checkbox.isEnabled = false
+                checkbox.isSelected = false
+                checkbox.toolTipText = tooltipMessage
+            }
+        }
     }
 
     private fun createJavaOptionsPanel(): JPanel {

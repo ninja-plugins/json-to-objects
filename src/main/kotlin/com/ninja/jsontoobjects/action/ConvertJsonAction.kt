@@ -6,6 +6,8 @@ import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.module.Module
+import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.ui.Messages
@@ -41,6 +43,9 @@ class ConvertJsonAction : AnAction() {
         val file = e.getData(CommonDataKeys.VIRTUAL_FILE)
         val editor = e.getData(CommonDataKeys.EDITOR)
 
+        // 모듈 정보 가져오기
+        val module = file?.let { ModuleUtilCore.findModuleForFile(it, project) }
+
         // 현재 열린 파일에서 패키지 감지
         val suggestedPackage = detectPackageFromCurrentFile(project, file)
 
@@ -67,7 +72,7 @@ class ConvertJsonAction : AnAction() {
             }
         }
 
-        processConversion(project, jsonContent, suggestedClassName, targetDir, suggestedPackage)
+        processConversion(project, module, jsonContent, suggestedClassName, targetDir, suggestedPackage)
     }
 
     private fun detectPackageFromCurrentFile(project: Project, file: VirtualFile?): String? {
@@ -106,13 +111,14 @@ class ConvertJsonAction : AnAction() {
     companion object {
         fun processConversion(
             project: Project,
+            module: Module?,
             initialJson: String,
             suggestedClassName: String,
             targetDir: VirtualFile?,
             suggestedPackage: String? = null
         ) {
             // Show options dialog
-            val dialog = ConvertOptionsDialog(project, suggestedClassName, initialJson, suggestedPackage)
+            val dialog = ConvertOptionsDialog(project, module, suggestedClassName, initialJson, suggestedPackage)
             if (!dialog.showAndGet()) {
                 return
             }
