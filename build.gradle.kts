@@ -29,7 +29,6 @@ dependencies {
 
 
         bundledPlugin("com.intellij.java")
-        bundledPlugin("org.jetbrains.kotlin")
     }
 }
 
