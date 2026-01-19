@@ -15,7 +15,22 @@ object PackageExtractor {
      * @return 패키지명 또는 없으면 null
      */
     fun extractPackage(sourceCode: String): String? {
-        return PACKAGE_REGEX.find(sourceCode)?.groupValues?.get(1)
+        return PACKAGE_REGEX.find(sourceCode)?.groupValues?.get(1)?.let { cleanPackageName(it) }
+    }
+
+    /**
+     * 패키지명에서 불필요한 문자를 제거합니다.
+     * 세미콜론, 공백 등을 정리합니다.
+     *
+     * @param packageName 정리할 패키지명
+     * @return 정리된 패키지명
+     */
+    fun cleanPackageName(packageName: String): String {
+        return packageName
+            .trim()
+            .removeSuffix(";")
+            .removeSuffix(",")
+            .trim()
     }
 
     /**

@@ -11,12 +11,15 @@ object JsonInputCleaner {
     fun clean(input: String): String {
         val trimmed = input.trim()
 
-        return when {
+        val result = when {
             looksLikeCommentedJson(trimmed) -> cleanCommentedJson(trimmed)
             looksLikeJavaStringConcat(trimmed) -> cleanJavaStringConcat(trimmed)
             looksLikeKotlinRawString(trimmed) -> cleanKotlinRawString(trimmed)
             else -> trimmed
         }
+
+        // 끝에 붙은 세미콜론 제거 (모든 케이스에 적용)
+        return result.trim().removeSuffix(";").trim()
     }
 
     /**
@@ -106,6 +109,10 @@ object JsonInputCleaner {
         // """ 제거
         result = result.replace("\"\"\"", "")
 
-        return result.trim()
+        // 끝에 붙은 세미콜론 제거
+        result = result.trim()
+        result = result.removeSuffix(";").trim()
+
+        return result
     }
 }

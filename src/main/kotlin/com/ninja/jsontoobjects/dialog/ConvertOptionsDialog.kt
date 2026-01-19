@@ -6,8 +6,11 @@ import com.google.gson.JsonSyntaxException
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.roots.LanguageLevelProjectExtension
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.openapi.ui.ValidationInfo
+import com.intellij.openapi.vfs.VirtualFile
+import com.intellij.ui.TextFieldWithAutoCompletion
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import com.intellij.util.ui.FormBuilder
@@ -29,7 +32,24 @@ class ConvertOptionsDialog(
 ) : DialogWrapper(project) {
 
     private val classNameField = JBTextField(suggestedClassName)
-    private val packageNameField = JBTextField(suggestedPackage ?: "")
+    private val packageNameField: JComponent = if (project != null) {
+        TextFieldWithAutoCompletion.create(
+            project,
+            collectPackageNames(project),
+            true,
+            suggestedPackage ?: ""
+        )
+    } else {
+        JBTextField(suggestedPackage ?: "")
+    }
+
+    private fun getPackageName(): String {
+        return when (val field = packageNameField) {
+            is TextFieldWithAutoCompletion<*> -> field.text
+            is JBTextField -> field.text
+            else -> ""
+        }
+    }
     private val jsonInputArea = JTextArea(prettyFormat(initialJson), 8, 40).apply {
         lineWrap = true
         wrapStyleWord = true
@@ -373,7 +393,7 @@ class ConvertOptionsDialog(
         val kotlinStructureMode = if (kotlinMultipleFilesCheckbox.isSelected)
             StructureMode.MULTIPLE_FILES else StructureMode.SEPARATE_CLASSES
 
-        val packageName = packageNameField.text.trim().takeIf { it.isNotEmpty() }
+        val packageName = getPackageName().trim().takeIf { it.isNotEmpty() }
 
         return GeneratorOptions(
             className = classNameField.text.trim(),
@@ -411,6 +431,36 @@ class ConvertOptionsDialog(
                 gson.toJson(jsonElement)
             } catch (e: Exception) {
                 input // 파싱 실패시 원본 반환
+            }
+        }
+
+        fun collectPackageNames(project: Project): Collection<String> {
+            val packages = mutableSetOf<String>()
+
+            ProjectRootManager.getInstance(project).contentSourceRoots.forEach { sourceRoot ->
+                collectPackagesFromDirectory(sourceRoot, "", packages)
+            }
+
+            return packages.sorted()
+        }
+
+        private fun collectPackagesFromDirectory(
+            dir: VirtualFile,
+            currentPackage: String,
+            packages: MutableSet<String>
+        ) {
+            if (!dir.isDirectory) return
+
+            val hasSourceFiles = dir.children.any {
+                it.extension == "java" || it.extension == "kt"
+            }
+            if (hasSourceFiles && currentPackage.isNotEmpty()) {
+                packages.add(currentPackage)
+            }
+
+            dir.children.filter { it.isDirectory && !it.name.startsWith(".") }.forEach { subDir ->
+                val subPackage = if (currentPackage.isEmpty()) subDir.name else "$currentPackage.${subDir.name}"
+                collectPackagesFromDirectory(subDir, subPackage, packages)
             }
         }
     }

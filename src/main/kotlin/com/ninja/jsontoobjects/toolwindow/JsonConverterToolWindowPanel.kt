@@ -3,13 +3,17 @@ package com.ninja.jsontoobjects.toolwindow
 import com.google.gson.GsonBuilder
 import com.google.gson.JsonParser
 import com.google.gson.JsonSyntaxException
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.module.ModuleManager
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.roots.LanguageLevelProjectExtension
+import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.ui.Messages
+import com.intellij.ui.TextFieldWithAutoCompletion
+import com.ninja.jsontoobjects.util.PackageExtractor
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextField
@@ -30,7 +34,12 @@ import javax.swing.*
 class JsonConverterToolWindowPanel(private val project: Project) : JPanel(BorderLayout()) {
 
     private val classNameField = JBTextField("Generated")
-    private val packageNameField = JBTextField()
+    private val packageNameField = TextFieldWithAutoCompletion.create(
+        project,
+        collectPackageNames(project),
+        true,
+        ""
+    )
     private val jsonInputArea = JTextArea(8, 40).apply {
         lineWrap = true
         wrapStyleWord = true
@@ -89,6 +98,14 @@ class JsonConverterToolWindowPanel(private val project: Project) : JPanel(Border
         updateLombokAvailability()
         updateAllOptionsState()
         buildUI()
+
+        // Set package from currently open file (delayed to ensure files are loaded)
+        javax.swing.Timer(100) {
+            updatePackageFromCurrentFile()
+        }.apply {
+            isRepeats = false
+            start()
+        }
     }
 
     private fun buildUI() {
@@ -101,6 +118,7 @@ class JsonConverterToolWindowPanel(private val project: Project) : JPanel(Border
             .addLabeledComponent(JBLabel("Package:"), packageNameField)
             .addLabeledComponent(JBLabel("Class Name:"), classNameField)
             .panel
+        classNamePanel.alignmentX = LEFT_ALIGNMENT
         mainPanel.add(classNamePanel)
 
         // JSON input
@@ -114,6 +132,7 @@ class JsonConverterToolWindowPanel(private val project: Project) : JPanel(Border
 
         jsonPanel.preferredSize = Dimension(400, 180)
         jsonPanel.minimumSize = Dimension(200, 100)
+        jsonPanel.alignmentX = LEFT_ALIGNMENT
         mainPanel.add(jsonPanel)
 
         // Language selection
@@ -121,6 +140,7 @@ class JsonConverterToolWindowPanel(private val project: Project) : JPanel(Border
         languagePanel.add(JBLabel("Target Language: "))
         languagePanel.add(javaRadio)
         languagePanel.add(kotlinRadio)
+        languagePanel.alignmentX = LEFT_ALIGNMENT
         mainPanel.add(languagePanel)
 
         // Options panels
@@ -129,12 +149,14 @@ class JsonConverterToolWindowPanel(private val project: Project) : JPanel(Border
         optionsPanel.add(javaOptionsPanel)
         optionsPanel.add(kotlinOptionsPanel)
         kotlinOptionsPanel.isVisible = false
+        optionsPanel.alignmentX = LEFT_ALIGNMENT
         mainPanel.add(optionsPanel)
 
         // Generate button
-        val generatePanel = JPanel(FlowLayout(FlowLayout.CENTER))
+        val generatePanel = JPanel(FlowLayout(FlowLayout.LEFT))
         generateButton.preferredSize = Dimension(150, 30)
         generatePanel.add(generateButton)
+        generatePanel.alignmentX = LEFT_ALIGNMENT
         mainPanel.add(Box.createVerticalStrut(10))
         mainPanel.add(generatePanel)
 
@@ -147,6 +169,7 @@ class JsonConverterToolWindowPanel(private val project: Project) : JPanel(Border
         val panel = JPanel()
         panel.layout = BoxLayout(panel, BoxLayout.Y_AXIS)
         panel.border = BorderFactory.createTitledBorder("Java Options")
+        panel.alignmentX = LEFT_ALIGNMENT
 
         panel.add(useJsonPropertyCheckbox)
         panel.add(useRecordCheckbox)
@@ -194,6 +217,7 @@ class JsonConverterToolWindowPanel(private val project: Project) : JPanel(Border
         val panel = JPanel()
         panel.layout = BoxLayout(panel, BoxLayout.Y_AXIS)
         panel.border = BorderFactory.createTitledBorder("Kotlin Options")
+        panel.alignmentX = LEFT_ALIGNMENT
 
         panel.add(kotlinJsonPropertyCheckbox)
         panel.add(kotlinMultipleFilesCheckbox)
@@ -220,6 +244,14 @@ class JsonConverterToolWindowPanel(private val project: Project) : JPanel(Border
     private fun formatJsonInput() {
         val formatted = prettyFormat(jsonInputArea.text)
         jsonInputArea.text = formatted
+    }
+
+    private fun updatePackageFromCurrentFile() {
+        if (packageNameField.text.isNullOrEmpty()) {
+            detectCurrentPackage(project)?.let { pkg ->
+                packageNameField.text = pkg
+            }
+        }
     }
 
     private fun updateOptionsVisibility() {
@@ -371,8 +403,8 @@ class JsonConverterToolWindowPanel(private val project: Project) : JPanel(Border
             }
         }
 
-        // Get output directory
-        val outputDir = project.guessProjectDir()
+        // Get output directory based on package
+        val outputDir = findOrCreatePackageDirectory(options.packageName)
         if (outputDir == null) {
             // Copy to clipboard
             val content = generatedFiles.values.joinToString("\n\n")
@@ -389,7 +421,8 @@ class JsonConverterToolWindowPanel(private val project: Project) : JPanel(Border
             }
         }
 
-        // Open the first generated file
+        // Refresh and open the first generated file
+        outputDir.refresh(false, false)
         generatedFiles.keys.firstOrNull()?.let { fileName ->
             outputDir.findChild(fileName)?.let { createdFile ->
                 FileEditorManager.getInstance(project).openFile(createdFile, true)
@@ -403,6 +436,43 @@ class JsonConverterToolWindowPanel(private val project: Project) : JPanel(Border
             "Generated $fileCount files"
         }
         Messages.showInfoMessage(project, message, "Success")
+    }
+
+    private fun findOrCreatePackageDirectory(packageName: String?): com.intellij.openapi.vfs.VirtualFile? {
+        val sourceRoots = ProjectRootManager.getInstance(project).contentSourceRoots
+
+        if (packageName.isNullOrEmpty()) {
+            // No package - use first source root or project dir
+            return sourceRoots.firstOrNull() ?: project.guessProjectDir()
+        }
+
+        val packagePath = packageName.replace('.', '/')
+
+        // Try to find existing package directory in source roots
+        for (sourceRoot in sourceRoots) {
+            val existingDir = sourceRoot.findFileByRelativePath(packagePath)
+            if (existingDir != null && existingDir.isDirectory) {
+                return existingDir
+            }
+        }
+
+        // Create package directory in first source root
+        val sourceRoot = sourceRoots.firstOrNull() ?: return project.guessProjectDir()
+
+        return try {
+            var currentDir = sourceRoot
+            for (part in packageName.split('.')) {
+                val existing = currentDir.findChild(part)
+                currentDir = if (existing != null && existing.isDirectory) {
+                    existing
+                } else {
+                    currentDir.createChildDirectory(this, part)
+                }
+            }
+            currentDir
+        } catch (e: Exception) {
+            sourceRoot
+        }
     }
 
     private fun createOrUpdateFile(parentDir: com.intellij.openapi.vfs.VirtualFile, fileName: String, content: String) {
@@ -465,6 +535,68 @@ class JsonConverterToolWindowPanel(private val project: Project) : JPanel(Border
                 gson.toJson(jsonElement)
             } catch (e: Exception) {
                 input
+            }
+        }
+
+        fun detectCurrentPackage(project: Project): String? {
+            return ApplicationManager.getApplication().runReadAction<String?> {
+                val fileEditorManager = FileEditorManager.getInstance(project)
+                val allFiles = fileEditorManager.openFiles.toList()
+
+                // Try selected file first, then all open files
+                val selectedFile = fileEditorManager.selectedFiles.firstOrNull()
+                val orderedFiles = if (selectedFile != null) {
+                    listOf(selectedFile) + allFiles.filter { it != selectedFile }
+                } else {
+                    allFiles
+                }
+
+                for (file in orderedFiles) {
+                    val ext = file.extension?.lowercase()
+                    if (ext == "java" || ext == "kt") {
+                        try {
+                            val content = String(file.contentsToByteArray(), Charsets.UTF_8)
+                            PackageExtractor.extractPackage(content)?.let { return@runReadAction it }
+                        } catch (e: Exception) {
+                            // ignore
+                        }
+                    }
+                }
+
+                null
+            }
+        }
+
+        fun collectPackageNames(project: Project): Collection<String> {
+            val packages = mutableSetOf<String>()
+
+            // Get all source roots and collect package names
+            ProjectRootManager.getInstance(project).contentSourceRoots.forEach { sourceRoot ->
+                collectPackagesFromDirectory(sourceRoot, "", packages)
+            }
+
+            return packages.sorted()
+        }
+
+        private fun collectPackagesFromDirectory(
+            dir: com.intellij.openapi.vfs.VirtualFile,
+            currentPackage: String,
+            packages: MutableSet<String>
+        ) {
+            if (!dir.isDirectory) return
+
+            // Add current package if it contains source files
+            val hasSourceFiles = dir.children.any {
+                it.extension == "java" || it.extension == "kt"
+            }
+            if (hasSourceFiles && currentPackage.isNotEmpty()) {
+                packages.add(currentPackage)
+            }
+
+            // Recurse into subdirectories
+            dir.children.filter { it.isDirectory && !it.name.startsWith(".") }.forEach { subDir ->
+                val subPackage = if (currentPackage.isEmpty()) subDir.name else "$currentPackage.${subDir.name}"
+                collectPackagesFromDirectory(subDir, subPackage, packages)
             }
         }
     }
