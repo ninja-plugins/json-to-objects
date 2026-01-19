@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.ninja"
-version = "1.0.1"
+version = "1.0.2"
 
 repositories {
     mavenCentral()
@@ -39,6 +39,14 @@ intellijPlatform {
         }
 
         changeNotes = """
+            <h3>1.0.2</h3>
+            <ul>
+                <li>Add Tool Window for quick access from IDE sidebar</li>
+                <li>Package name autocomplete support</li>
+                <li>Auto-detect package from currently open file</li>
+                <li>Generate files in correct package directory</li>
+                <li>Improved JSON input cleaning (trailing semicolon removal)</li>
+            </ul>
             <h3>1.0.1</h3>
             <ul>
                 <li>Initial release</li>
