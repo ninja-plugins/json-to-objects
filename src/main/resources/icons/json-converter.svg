@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16">
+  <!-- Left brace { -->
+  <path fill="#AFB1B3" d="M4 1C2.5 1 1 2.5 1 4v3c0 .5-.5 1-1 1 .5 0 1 .5 1 1v3c0 1.5 1.5 3 3 3V14c-1 0-2-1-2-2V9c0-.5-.5-1-1-1 .5 0 1-.5 1-1V4c0-1 1-2 2-2V1z"/>
+  <!-- Right brace } -->
+  <path fill="#AFB1B3" d="M12 1v1c1 0 2 1 2 2v3c0 .5.5 1 1 1-.5 0-1 .5-1 1v3c0 1-1 2-2 2v1c1.5 0 3-1.5 3-3V9c0-.5.5-1 1-1-.5 0-1-.5-1-1V4c0-1.5-1.5-3-3-3z"/>
+  <!-- Arrow → -->
+  <path fill="none" stroke="#AFB1B3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4.5 8h6m-2-2.5l2.5 2.5-2.5 2.5"/>
+</svg>

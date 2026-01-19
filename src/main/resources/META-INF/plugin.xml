@@ -42,6 +42,10 @@
     <!-- Extensions defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
     <extensions defaultExtensionNs="com.intellij">
+        <toolWindow id="JSON to Java/Kotlin Object"
+                    anchor="right"
+                    icon="/icons/json-converter.svg"
+                    factoryClass="com.ninja.jsontoobjects.toolwindow.JsonConverterToolWindowFactory"/>
     </extensions>
 
     <actions>
