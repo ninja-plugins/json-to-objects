@@ -153,10 +153,14 @@ class JsonConverterToolWindowPanel(private val project: Project) : JPanel(Border
         mainPanel.add(optionsPanel)
 
         // Generate button
-        val generatePanel = JPanel(FlowLayout(FlowLayout.LEFT))
         generateButton.preferredSize = Dimension(150, 30)
-        generatePanel.add(generateButton)
-        generatePanel.alignmentX = LEFT_ALIGNMENT
+        val generatePanel = JPanel().apply {
+            layout = BoxLayout(this, BoxLayout.X_AXIS)
+            alignmentX = LEFT_ALIGNMENT
+            maximumSize = Dimension(Int.MAX_VALUE, generateButton.preferredSize.height + JBUI.scale(10))
+            add(Box.createHorizontalGlue())
+            add(generateButton)
+        }
         mainPanel.add(Box.createVerticalStrut(10))
         mainPanel.add(generatePanel)
 
