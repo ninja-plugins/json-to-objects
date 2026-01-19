@@ -34,7 +34,8 @@ class JavaGenerator(private val options: JavaOptions) {
 
     private fun generateWithInnerClasses(rootClassName: String, parseResult: ParseResult): String {
         val sb = StringBuilder()
-        addImports(sb)
+        val needsListImport = parseResult.allClasses.hasAnyListField()
+        addImports(sb, needsListImport)
 
         val rootType = parseResult.allClasses[rootClassName]
             ?: return "// Error: Root class not found"
@@ -47,7 +48,8 @@ class JavaGenerator(private val options: JavaOptions) {
 
     private fun generateSeparateClassesSingleFile(rootClassName: String, parseResult: ParseResult): String {
         val sb = StringBuilder()
-        addImports(sb)
+        val needsListImport = parseResult.allClasses.hasAnyListField()
+        addImports(sb, needsListImport)
         sb.appendLine()
 
         for ((className, objectType) in parseResult.allClasses) {
@@ -61,14 +63,15 @@ class JavaGenerator(private val options: JavaOptions) {
     private fun generateSingleClass(className: String, objectType: ParsedType.ObjectType, isInner: Boolean): String {
         val sb = StringBuilder()
         if (!isInner) {
-            addImports(sb)
+            val needsListImport = objectType.hasListField()
+            addImports(sb, needsListImport)
             sb.appendLine()
         }
         generateClassContent(sb, className, objectType, emptyMap(), indent = "", isInner = isInner, includeInnerClasses = false)
         return sb.toString()
     }
 
-    private fun addImports(sb: StringBuilder) {
+    private fun addImports(sb: StringBuilder, needsListImport: Boolean) {
         packageName?.let {
             sb.appendLine("package $it;")
             sb.appendLine()
@@ -79,24 +82,34 @@ class JavaGenerator(private val options: JavaOptions) {
         if (options.useJsonProperty) {
             imports.add("import com.fasterxml.jackson.annotation.JsonProperty;")
         }
-        if (options.useData) {
+        if (!options.useRecord && options.useData) {
             imports.add("import lombok.Data;")
         }
-        if (options.useGetter) {
+        if (!options.useRecord && options.useGetter) {
             imports.add("import lombok.Getter;")
         }
-        if (options.useSetter) {
+        if (!options.useRecord && options.useSetter) {
             imports.add("import lombok.Setter;")
         }
-        if (options.useNoArgsConstructor) {
+        if (!options.useRecord && options.useNoArgsConstructor) {
             imports.add("import lombok.NoArgsConstructor;")
         }
-        if (options.useAllArgsConstructor) {
+        if (!options.useRecord && options.useAllArgsConstructor) {
             imports.add("import lombok.AllArgsConstructor;")
         }
-        imports.add("import java.util.List;")
+        if (needsListImport) {
+            imports.add("import java.util.List;")
+        }
 
         imports.sorted().forEach { sb.appendLine(it) }
+    }
+
+    private fun ParsedType.ObjectType.hasListField(): Boolean {
+        return fields.values.any { it is ParsedType.ArrayType }
+    }
+
+    private fun Map<String, ParsedType.ObjectType>.hasAnyListField(): Boolean {
+        return values.any { it.hasListField() }
     }
 
     private fun generateClassContent(
