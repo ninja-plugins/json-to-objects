@@ -13,6 +13,7 @@ import com.intellij.openapi.roots.LanguageLevelProjectExtension
 import com.intellij.openapi.roots.ProjectRootManager
 import com.intellij.openapi.ui.Messages
 import com.intellij.ui.TextFieldWithAutoCompletion
+import com.ninja.jsontoobjects.util.PackageDirectoryUtil
 import com.ninja.jsontoobjects.util.PackageExtractor
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBScrollPane
@@ -408,7 +409,7 @@ class JsonConverterToolWindowPanel(private val project: Project) : JPanel(Border
         }
 
         // Get output directory based on package
-        val outputDir = findOrCreatePackageDirectory(options.packageName)
+        val outputDir = PackageDirectoryUtil.findOrCreatePackageDirectory(project, null, options.packageName)
         if (outputDir == null) {
             // Copy to clipboard
             val content = generatedFiles.values.joinToString("\n\n")
@@ -440,43 +441,6 @@ class JsonConverterToolWindowPanel(private val project: Project) : JPanel(Border
             "Generated $fileCount files"
         }
         Messages.showInfoMessage(project, message, "Success")
-    }
-
-    private fun findOrCreatePackageDirectory(packageName: String?): com.intellij.openapi.vfs.VirtualFile? {
-        val sourceRoots = ProjectRootManager.getInstance(project).contentSourceRoots
-
-        if (packageName.isNullOrEmpty()) {
-            // No package - use first source root or project dir
-            return sourceRoots.firstOrNull() ?: project.guessProjectDir()
-        }
-
-        val packagePath = packageName.replace('.', '/')
-
-        // Try to find existing package directory in source roots
-        for (sourceRoot in sourceRoots) {
-            val existingDir = sourceRoot.findFileByRelativePath(packagePath)
-            if (existingDir != null && existingDir.isDirectory) {
-                return existingDir
-            }
-        }
-
-        // Create package directory in first source root
-        val sourceRoot = sourceRoots.firstOrNull() ?: return project.guessProjectDir()
-
-        return try {
-            var currentDir = sourceRoot
-            for (part in packageName.split('.')) {
-                val existing = currentDir.findChild(part)
-                currentDir = if (existing != null && existing.isDirectory) {
-                    existing
-                } else {
-                    currentDir.createChildDirectory(this, part)
-                }
-            }
-            currentDir
-        } catch (e: Exception) {
-            sourceRoot
-        }
     }
 
     private fun createOrUpdateFile(parentDir: com.intellij.openapi.vfs.VirtualFile, fileName: String, content: String) {

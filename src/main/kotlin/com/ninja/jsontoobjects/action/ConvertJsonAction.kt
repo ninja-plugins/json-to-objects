@@ -9,7 +9,6 @@ import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.VirtualFile
 import com.intellij.psi.PsiManager
@@ -18,6 +17,7 @@ import com.ninja.jsontoobjects.generator.JavaGenerator
 import com.ninja.jsontoobjects.generator.KotlinGenerator
 import com.ninja.jsontoobjects.model.TargetLanguage
 import com.ninja.jsontoobjects.parser.JsonParser
+import com.ninja.jsontoobjects.util.PackageDirectoryUtil
 import com.ninja.jsontoobjects.util.PackageExtractor
 import com.ninja.jsontoobjects.util.StringUtils
 
@@ -153,8 +153,16 @@ class ConvertJsonAction : AnAction() {
                 }
             }
 
-            // 타겟 디렉토리가 없으면 프로젝트 루트 사용
-            val outputDir = targetDir ?: project.guessProjectDir()
+            val packageDir = if (!options.packageName.isNullOrBlank()) {
+                PackageDirectoryUtil.findOrCreatePackageDirectory(project, module, options.packageName)
+            } else {
+                null
+            }
+            // 패키지 경로 우선, 없으면 지정된 디렉토리나 프로젝트 루트 사용
+            val outputDir = packageDir
+                ?: targetDir
+                ?: PackageDirectoryUtil.findOrCreatePackageDirectory(project, module, null)
+
             if (outputDir == null) {
                 // 파일 저장 없이 클립보드에 복사
                 val content = generatedFiles.values.joinToString("\n\n")
