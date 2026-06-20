@@ -2,12 +2,16 @@ package com.ninja.jsontoobjects.util
 
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.roots.ModuleRootManager
 import com.intellij.openapi.roots.ProjectRootManager
+import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.openapi.vfs.VirtualFile
 
 object PackageDirectoryUtil {
+    fun projectBaseDirectory(project: Project): VirtualFile? {
+        return project.basePath?.let { LocalFileSystem.getInstance().findFileByPath(it) }
+    }
+
     fun findOrCreatePackageDirectory(
         project: Project,
         module: Module?,
@@ -19,7 +23,7 @@ object PackageDirectoryUtil {
         }
 
         if (packageName.isNullOrBlank()) {
-            return sourceRoots.firstOrNull() ?: project.guessProjectDir()
+            return sourceRoots.firstOrNull() ?: projectBaseDirectory(project)
         }
 
         val packagePath = packageName.replace('.', '/')
@@ -31,7 +35,7 @@ object PackageDirectoryUtil {
             }
         }
 
-        val baseDir = sourceRoots.firstOrNull() ?: project.guessProjectDir() ?: return null
+        val baseDir = sourceRoots.firstOrNull() ?: projectBaseDirectory(project) ?: return null
 
         return try {
             var currentDir = baseDir

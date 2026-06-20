@@ -7,8 +7,8 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.fileEditor.FileEditorManager
 import com.intellij.openapi.module.ModuleUtilCore
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.project.guessProjectDir
 import com.intellij.openapi.vfs.VirtualFile
+import com.ninja.jsontoobjects.util.PackageDirectoryUtil
 import com.ninja.jsontoobjects.util.PackageExtractor
 
 class OpenJsonConverterAction : AnAction() {
@@ -40,7 +40,7 @@ class OpenJsonConverterAction : AnAction() {
             module = module,
             initialJson = selectedText,
             suggestedClassName = "Generated",
-            targetDir = file?.parent ?: project.guessProjectDir(),
+            targetDir = file?.parent ?: PackageDirectoryUtil.projectBaseDirectory(project),
             suggestedPackage = suggestedPackage
         )
     }

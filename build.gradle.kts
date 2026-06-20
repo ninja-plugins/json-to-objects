@@ -1,11 +1,11 @@
 plugins {
     id("java")
-    id("org.jetbrains.kotlin.jvm") version "2.1.20"
-    id("org.jetbrains.intellij.platform") version "2.10.2"
+    id("org.jetbrains.kotlin.jvm") version "2.3.0"
+    id("org.jetbrains.intellij.platform") version "2.16.0"
 }
 
 group = "com.ninja"
-version = "1.0.2"
+version = "1.0.3"
 
 repositories {
     mavenCentral()
@@ -22,7 +22,7 @@ dependencies {
 //    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 
     intellijPlatform {
-        intellijIdea("2025.2.4")
+        intellijIdea("2026.1.3")
         testFramework(org.jetbrains.intellij.platform.gradle.TestFrameworkType.Platform)
 
         // Add plugin dependencies for compilation here:
@@ -35,7 +35,8 @@ dependencies {
 intellijPlatform {
     pluginConfiguration {
         ideaVersion {
-            sinceBuild = "231"  // IntelliJ 2023.1+
+            sinceBuild = "261"  // IntelliJ 2026.1+
+            untilBuild = provider { null }
         }
 
         changeNotes = """
