@@ -47,3 +47,35 @@ bin/
 
 ### Credentials ###
 gradle.properties
+
+### Harness local state and generated artifacts ###
+docs/harness/plans/active/*.md
+docs/harness/plans/completed/*.md
+.codex/skills/
+__tmp-*.sh
+**/__tmp-*.sh
+
+### Secrets and local tokens ###
+.env*
+*.pem
+*.p12
+*.key
+*.keystore
+*secret*.json
+*secret*.yml
+*secret*.yaml
+*secret*.txt
+*secret*.conf
+*secret*.config
+*secret*.ini
+*secret*.properties
+*secret*.toml
+*token*.json
+*token*.yml
+*token*.yaml
+*token*.txt
+*token*.conf
+*token*.config
+*token*.ini
+*token*.properties
+*token*.toml

@@ -1,0 +1,213 @@
+SHELL := bash
+.SHELLFLAGS := -euo pipefail -c
+.DEFAULT_GOAL := help
+
+HARNESS_VERIFY ?= scripts/verify-harness-structure.sh
+HARNESS_PROJECT_GATES ?= scripts/verify-project-gates.sh
+HARNESS_SYNC_SKILLS ?= scripts/sync-skills.sh
+HARNESS_CHECK_PROFILE ?= scripts/check-profile-readiness.sh
+HARNESS_SELF_TEST_GATES ?= scripts/self-test-harness-gates.sh
+HARNESS_EVAL ?= scripts/collect-eval-metrics.sh
+HARNESS_CHECK_PLANS ?= scripts/check-completed-plan-quality.sh
+HARNESS_SET_MODEL ?= scripts/set-codex-agent-model.sh
+HARNESS_CHECK_UPGRADE ?= scripts/check-harness-upgrade.py
+HARNESS_APPLY_HARNESS ?= scripts/apply-harness-to-project.sh
+HARNESS_POSIX_UTILITIES ?= find cp rm mkdir chmod rmdir sed env uname head cat dirname pwd
+
+ORG_GATE_SCRIPT_VARS := \
+  HARNESS_BACKEND_TEST_SCRIPT \
+  HARNESS_PRIMARY_FRONTEND_TEST_SCRIPT \
+  HARNESS_SECONDARY_APP_TEST_SCRIPT \
+  HARNESS_INTEGRATION_TEST_SCRIPT \
+  HARNESS_SECURITY_SCAN_SCRIPT \
+  HARNESS_A11Y_CHECK_SCRIPT
+
+.PHONY: \
+  help doctor verify verify-template verify-project verify-org harness-upgrade \
+  project-ready check-profile project-gates project-gates-required sync-skills check-sync \
+  self-test-gates unit-tests check-active-plans integrity eval check-plans set-model apply-harness clean
+
+help:
+	@echo "Harness commands:"
+	@echo "  make help                    Show this help"
+	@echo "  make doctor                  Check local harness tooling and script executability"
+	@echo "  make verify                  Run project harness verification"
+	@echo "  make verify-template         Run template-mode harness verification"
+	@echo "  make verify-project          Run project-mode harness verification"
+	@echo "  make project-ready           Verify project mode and fail on unfilled profile placeholders"
+	@echo "  make check-profile           Check project profile/context placeholders only"
+	@echo "  make self-test-gates         Verify key positive and negative harness gate behavior"
+	@echo "  make unit-tests              Run Python unit tests for harness libraries"
+	@echo "  make integrity               Run final local harness integrity checks"
+	@echo "  make verify-org              Run organization-standard verification with real project gates"
+	@echo "  make project-gates           Run configured project gates only; skips if none configured"
+	@echo "  make project-gates-required  Run project gates only and fail when no gate is configured"
+	@echo "  make sync-skills             Sync .agents/skills to .claude/skills"
+	@echo "  make check-sync              Verify skill mirrors after sync"
+	@echo "  make eval                    Collect completed-plan eval metrics"
+	@echo "  make check-plans             Check completed plan quality"
+	@echo "  make check-active-plans      Fail if active plans remain"
+	@echo "  make set-model MODEL=<model> Update Codex agent model in all TOML files"
+	@echo "  make harness-upgrade         Check harness version and upgrade metadata"
+	@echo "  make apply-harness TARGET=../repo  Dry-run apply harness to another repo"
+	@echo "  make clean                   Remove local generated metadata and runtime cache files"
+	@echo ""
+	@echo "Organization mode requires at least one repository script gate. Supported variables:"
+	@for var in $(ORG_GATE_SCRIPT_VARS); do echo "  $$var"; done
+	@echo ""
+	@echo "Example:"
+	@echo "  HARNESS_INTEGRATION_TEST_SCRIPT=scripts/ci/integration-test.sh make verify-org"
+
+# Local sanity check that does not run project build/test commands.
+doctor:
+	@test -f AGENTS.md || { echo "[FAIL] missing AGENTS.md"; exit 1; }
+	@test -f CLAUDE.md || { echo "[FAIL] missing CLAUDE.md"; exit 1; }
+	@test -f Makefile || { echo "[FAIL] missing Makefile"; exit 1; }
+	@for script in \
+		"$(HARNESS_VERIFY)" \
+		"$(HARNESS_PROJECT_GATES)" \
+			"$(HARNESS_SYNC_SKILLS)" \
+			"$(HARNESS_CHECK_PROFILE)" \
+			"$(HARNESS_SELF_TEST_GATES)" \
+			"$(HARNESS_EVAL)" \
+			"$(HARNESS_CHECK_PLANS)" \
+			"$(HARNESS_SET_MODEL)" \
+			"$(HARNESS_CHECK_UPGRADE)" \
+			"$(HARNESS_APPLY_HARNESS)"; do \
+		if [ ! -f "$$script" ]; then echo "[FAIL] missing script: $$script"; exit 1; fi; \
+		if [ ! -x "$$script" ]; then echo "[FAIL] script must be executable: $$script"; exit 1; fi; \
+		done
+	@command -v bash >/dev/null || { echo "[FAIL] bash is required"; exit 1; }
+	@command -v python3 >/dev/null || { echo "[FAIL] python3 is required"; exit 1; }
+	@command -v make >/dev/null || { echo "[FAIL] make is required"; exit 1; }
+	@command -v git >/dev/null || { echo "[FAIL] git is required"; exit 1; }
+	@for tool in $(HARNESS_POSIX_UTILITIES); do \
+		command -v "$$tool" >/dev/null || { echo "[FAIL] POSIX utility is required: $$tool"; exit 1; }; \
+		done
+	@echo "[OK] POSIX utilities ready: $(HARNESS_POSIX_UTILITIES)"
+	@python3 -c 'import importlib.util, sys; parser = "tomllib" if importlib.util.find_spec("tomllib") else ("tomli" if importlib.util.find_spec("tomli") else ""); print("[OK] Python TOML parser ready: " + parser if parser else "[FAIL] Python TOML parser is required: use Python 3.11+ or install tomli", file=sys.stdout if parser else sys.stderr); sys.exit(0 if parser else 1)'
+	@os="$$(uname -s 2>/dev/null || echo unknown)"; \
+	case "$$os" in \
+		Darwin|Linux) echo "[OK] supported OS: $$os" ;; \
+		CYGWIN*|MINGW*|MSYS*) echo "[WARN] $$os is supported only through a POSIX-compatible shell; prefer WSL for CI parity" ;; \
+		*) echo "[FAIL] unsupported OS for harness scripts: $$os"; exit 1 ;; \
+	esac
+	@bash --version | head -n 1
+	@python3 --version
+	@make --version | head -n 1
+	@git --version
+	@bash -n scripts/*.sh
+	@echo "[OK] harness local tooling looks ready"
+
+verify: verify-project
+
+verify-template:
+	HARNESS_VERIFY_MODE=template bash "$(HARNESS_VERIFY)"
+
+verify-project:
+	HARNESS_VERIFY_MODE=project bash "$(HARNESS_VERIFY)"
+
+project-ready:
+	HARNESS_VERIFY_MODE=project \
+	HARNESS_REQUIRE_FILLED_PROFILE=1 \
+	bash "$(HARNESS_VERIFY)"
+
+check-profile:
+	bash "$(HARNESS_CHECK_PROFILE)"
+
+self-test-gates:
+	bash "$(HARNESS_SELF_TEST_GATES)"
+
+unit-tests:
+	python3 -m unittest discover -s tests/harness -p 'test_*.py'
+
+check-active-plans:
+	@active="$$(find docs/harness/plans/active -mindepth 1 ! -name .gitkeep -print)"; \
+	if [ -n "$$active" ]; then \
+		echo "[FAIL] active plans must be completed before final integrity:"; \
+		echo "$$active"; \
+		exit 1; \
+	fi
+	@echo "[OK] no active plans"
+
+integrity: doctor verify self-test-gates unit-tests check-plans check-active-plans
+	@git diff --check
+	@echo "[OK] harness integrity verified"
+
+# Organization-standard verification intentionally requires script gates, not
+# legacy HARNESS_*_CMD strings.  The gate scripts must live under the allowlisted
+# repository paths enforced by scripts/verify-project-gates.py.
+verify-org:
+	@found=0; \
+	for var in $(ORG_GATE_SCRIPT_VARS); do \
+		if [ -n "$${!var:-}" ]; then found=1; fi; \
+	done; \
+	if [ "$$found" -eq 0 ]; then \
+		echo "[FAIL] set at least one HARNESS_*_SCRIPT before make verify-org"; \
+		echo "       supported variables:"; \
+		for var in $(ORG_GATE_SCRIPT_VARS); do echo "       - $$var"; done; \
+		echo "       example: HARNESS_INTEGRATION_TEST_SCRIPT=scripts/ci/integration-test.sh make verify-org"; \
+		exit 1; \
+	fi
+	HARNESS_ORG_STANDARD=1 python3 "$(HARNESS_CHECK_UPGRADE)"
+	HARNESS_VERIFY_MODE=project \
+	HARNESS_ORG_STANDARD=1 \
+	HARNESS_ACK_TRUSTED_PROJECT_CMDS=1 \
+	bash "$(HARNESS_VERIFY)"
+	HARNESS_EVAL_FAIL_ON_GUARDRAIL=1 bash "$(HARNESS_EVAL)"
+
+project-gates:
+	HARNESS_RUN_PROJECT_CHECKS=1 bash "$(HARNESS_PROJECT_GATES)"
+
+project-gates-required:
+	HARNESS_RUN_PROJECT_CHECKS=1 \
+	HARNESS_REQUIRE_PROJECT_CHECKS=1 \
+	HARNESS_ACK_TRUSTED_PROJECT_CMDS=1 \
+	bash "$(HARNESS_PROJECT_GATES)"
+
+sync-skills:
+	bash "$(HARNESS_SYNC_SKILLS)"
+
+check-sync:
+	bash "$(HARNESS_SYNC_SKILLS)"
+	HARNESS_VERIFY_MODE=project bash "$(HARNESS_VERIFY)"
+
+eval:
+	bash "$(HARNESS_EVAL)"
+
+check-plans:
+	bash "$(HARNESS_CHECK_PLANS)"
+
+set-model:
+	@if [ -z "$${MODEL:-}" ]; then \
+		echo "[FAIL] set MODEL=<model> before make set-model"; \
+		echo "       example: make set-model MODEL=gpt-5.5"; \
+		exit 1; \
+	fi
+	bash "$(HARNESS_SET_MODEL)" "$${MODEL}"
+
+harness-upgrade:
+	python3 "$(HARNESS_CHECK_UPGRADE)" $${FROM_VERSION:+--from-version "$$FROM_VERSION"}
+
+apply-harness:
+	@if [ -z "$(TARGET)" ]; then \
+		echo "[FAIL] set TARGET=<target-repo> before make apply-harness"; \
+		echo "       example: make apply-harness TARGET=../my-service"; \
+		echo "       write files: make apply-harness TARGET=../my-service APPLY=1"; \
+		exit 1; \
+	fi
+	@set -- --target "$(TARGET)"; \
+	if [ -n "$(APPLY)" ]; then set -- "$$@" --apply; fi; \
+	if [ -n "$(PROFILE_ONLY)" ]; then set -- "$$@" --profile-only; fi; \
+	if [ -n "$(OVERWRITE_PROFILES)" ]; then set -- "$$@" --overwrite-profiles; fi; \
+	bash "$(HARNESS_APPLY_HARNESS)" "$$@"
+
+clean:
+	find . -name ".DS_Store" -delete
+	find . -name "._*" -delete
+	find . -type d -name "__MACOSX" -prune -exec rm -rf {} +
+	find . -name "__tmp-*.sh" -delete
+	find . -type d -name "__pycache__" -prune -exec rm -rf {} +
+	find . -type d -name ".pytest_cache" -prune -exec rm -rf {} +
+	find . -name "*.pyc" -delete
+	find . -name "*.pyo" -delete
